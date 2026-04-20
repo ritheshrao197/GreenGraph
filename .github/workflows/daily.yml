@@ -2,8 +2,11 @@ name: Daily Contribution
 
 on:
   schedule:
-    - cron: "30 5 * * *"   # 11 AM IST
+    - cron: "30 5 * * *"
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   commit:
@@ -12,23 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name:  Generate Engineering Log
+      - name: Update file
         run: |
-          DATE=$(date +'%Y-%m-%d')
-          YEAR=$(date +'%Y')
-
-          mkdir -p logs/$YEAR
-
-          echo "# $DATE" >> logs/$YEAR/$DATE.md
-          echo "## Work" >> logs/$YEAR/$DATE.md
-          echo "- Worked on system design / Unity architecture" >> logs/$YEAR/$DATE.md
-          echo "## Learning" >> logs/$YEAR/$DATE.md
-          echo "- Improved problem solving" >> logs/$YEAR/$DATE.md
+          echo "Update $(date)" >> log.txt
 
       - name: Commit & Push
         run: |
           git config --global user.name "Rithesh"
-          git config --global user.email "[EMAIL_ADDRESS]"
+          git config --global user.email "your_github_email"
 
           git add .
           git commit -m "Auto commit $(date)" || echo "No changes"
