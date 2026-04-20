@@ -12,9 +12,18 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Update file
+      - name:  Generate Engineering Log
         run: |
-          echo "Update $(date)" >> log.txt
+          DATE=$(date +'%Y-%m-%d')
+          YEAR=$(date +'%Y')
+
+          mkdir -p logs/$YEAR
+
+          echo "# $DATE" >> logs/$YEAR/$DATE.md
+          echo "## Work" >> logs/$YEAR/$DATE.md
+          echo "- Worked on system design / Unity architecture" >> logs/$YEAR/$DATE.md
+          echo "## Learning" >> logs/$YEAR/$DATE.md
+          echo "- Improved problem solving" >> logs/$YEAR/$DATE.md
 
       - name: Commit & Push
         run: |
