@@ -27,8 +27,8 @@ jobs:
 
       - name: Commit & Push
         run: |
-          git config --global user.name "YOUR NAME"
-          git config --global user.email "YOUR EMAIL"
+          git config --global user.name "Rithesh"
+          git config --global user.email "[EMAIL_ADDRESS]"
 
           git add .
           git commit -m "Auto commit $(date)" || echo "No changes"
