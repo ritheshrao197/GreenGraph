@@ -1,8 +1,8 @@
-name: Daily Contribution
+name: Daily Contribution - Random Time
 
 on:
   schedule:
-    - cron: "30 5 * * *"
+    - cron: "0 * * * *"      # Runs every hour (best for random daily timing)
   workflow_dispatch:
 
 permissions:
@@ -13,18 +13,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Update file
-        run: |
-          echo "Update $(date)" >> log.txt
-
-      - name: Commit & Push
+      - name: Random Time Daily Commits
         run: |
           git config --global user.name "Rithesh"
           git config --global user.email "rithesh197rao@gmail.com"
 
-          git add .
-          git commit -m "Auto commit $(date)" || echo "No changes"
+          # ====================== SETTINGS ======================
+          MIN_COMMITS=10
+          MAX_COMMITS=100
+          # =====================================================
 
-          git push
+          TODAY=$(date '+%Y-%m-%d')
+          LAST_RUN_FILE="last_run.txt"
+
+          # Check if we already ran today
+          if [ -f "$LAST_RUN_FILE" ] && [ "$(cat $LAST_RUN_FILE)" = "$TODAY" ]; then
+            echo "✅ Already made commits today. Skipping."
+            exit 0
+          fi
+
+          # Generate random number of commits
+          COMMITS=$((RANDOM % (MAX_COMMITS - MIN_COMMITS + 1) + MIN_COMMITS))
+          echo "🎲 Today's random commits: $COMMITS"
+
+          for i in $(seq 1 $COMMITS); do
+            echo "Commit #$i of $COMMITS - $(date '+%Y-%m-%d %H:%M:%S UTC')" >> log.txt
+            git add log.txt
+            git commit -m "Auto commit #$i/$COMMITS - $TODAY" || echo "Commit skipped"
+            echo "✓ Commit $i/$COMMITS"
+          done
+
+          git push origin ${{ github.ref }}
+
+          # Record that we ran today
+          echo "$TODAY" > $LAST_RUN_FILE
+          git add $LAST_RUN_FILE
+          git commit -m "Updated last_run tracker - $TODAY" || true
+          git push origin ${{ github.ref }}
+
+          echo "🎉 Completed $COMMITS commits at random time today!"
