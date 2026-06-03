@@ -1,56 +1,214 @@
-name: Daily Contribution - Random Time
+name: Advanced GitHub Contribution Engine
 
 on:
   schedule:
-    - cron: "0 * * * *"      # Runs every hour (best for random daily timing)
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  commit:
+  contribution-engine:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Random Time Daily Commits
+      - name: Generate Advanced Contribution Pattern
         run: |
+
           git config --global user.name "Rithesh"
           git config --global user.email "rithesh197rao@gmail.com"
 
-          # ====================== SETTINGS ======================
-          MIN_COMMITS=10
-          MAX_COMMITS=100
+          TODAY=$(date '+%Y-%m-%d')
+          WEEKDAY=$(date '+%u')
+          MONTH=$(date '+%m')
+
+          LAST_RUN_FILE="last_run.txt"
+          STREAK_FILE="streak_count.txt"
+
+          # =====================================================
+          # PREVENT MULTIPLE DAILY RUNS
           # =====================================================
 
-          TODAY=$(date '+%Y-%m-%d')
-          LAST_RUN_FILE="last_run.txt"
-
-          # Check if we already ran today
           if [ -f "$LAST_RUN_FILE" ] && [ "$(cat $LAST_RUN_FILE)" = "$TODAY" ]; then
-            echo "✅ Already made commits today. Skipping."
+            echo "Already committed today."
             exit 0
           fi
 
-          # Generate random number of commits
-          COMMITS=$((RANDOM % (MAX_COMMITS - MIN_COMMITS + 1) + MIN_COMMITS))
-          echo "🎲 Today's random commits: $COMMITS"
+          # =====================================================
+          # STREAK MANAGEMENT
+          # =====================================================
+
+          if [ ! -f "$STREAK_FILE" ]; then
+            echo "1" > "$STREAK_FILE"
+          fi
+
+          STREAK=$(cat "$STREAK_FILE")
+
+          echo "Current streak: $STREAK"
+
+          # =====================================================
+          # AUTO RESET MISSED STREAKS
+          # =====================================================
+
+          if [ -f "$LAST_RUN_FILE" ]; then
+
+            LAST_DATE=$(cat "$LAST_RUN_FILE")
+
+            LAST_TS=$(date -d "$LAST_DATE" +%s)
+            TODAY_TS=$(date -d "$TODAY" +%s)
+
+            DIFF_DAYS=$(( (TODAY_TS - LAST_TS) / 86400 ))
+
+            if [ "$DIFF_DAYS" -gt 1 ]; then
+              echo "Missed streak detected. Resetting."
+              STREAK=1
+            fi
+          fi
+
+          # =====================================================
+          # MAINTAIN EXACT 365 DAY STREAK
+          # =====================================================
+
+          if [ "$STREAK" -gt 365 ]; then
+            STREAK=365
+          fi
+
+          # =====================================================
+          # SEASONAL ACTIVITY PATTERNS
+          # =====================================================
+
+          SEASONAL_BOOST=0
+
+          # Higher activity during Jan-Apr and Sep-Nov
+          if [ "$MONTH" -ge 1 ] && [ "$MONTH" -le 4 ]; then
+            SEASONAL_BOOST=8
+          fi
+
+          if [ "$MONTH" -ge 9 ] && [ "$MONTH" -le 11 ]; then
+            SEASONAL_BOOST=10
+          fi
+
+          # Summer lower activity
+          if [ "$MONTH" -ge 5 ] && [ "$MONTH" -le 8 ]; then
+            SEASONAL_BOOST=3
+          fi
+
+          # December moderate
+          if [ "$MONTH" -eq 12 ]; then
+            SEASONAL_BOOST=5
+          fi
+
+          # =====================================================
+          # WEEKDAY vs WEEKEND PATTERNS
+          # =====================================================
+
+          if [ "$WEEKDAY" -le 5 ]; then
+            DAY_BOOST=$(( RANDOM % 8 + 5 ))
+          else
+            DAY_BOOST=$(( RANDOM % 3 + 1 ))
+          fi
+
+          # =====================================================
+          # CONTRIBUTION WAVE PATTERN
+          # =====================================================
+
+          DAY_OF_MONTH=$(date '+%d')
+
+          WAVE=$(( (DAY_OF_MONTH % 7) * 2 ))
+
+          # =====================================================
+          # RANDOM BURSTS
+          # =====================================================
+
+          BURST=0
+
+          if [ $(( RANDOM % 12 )) -eq 0 ]; then
+            BURST=$(( RANDOM % 20 + 10 ))
+          fi
+
+          # =====================================================
+          # FINAL COMMIT COUNT
+          # =====================================================
+
+          COMMITS=$(( WAVE + DAY_BOOST + BURST + SEASONAL_BOOST ))
+
+          # Safety limits
+          if [ "$COMMITS" -lt 1 ]; then
+            COMMITS=1
+          fi
+
+          if [ "$COMMITS" -gt 60 ]; then
+            COMMITS=60
+          fi
+
+          echo "Today's commits: $COMMITS"
+
+          # =====================================================
+          # OFFICE HOURS ONLY (9 AM - 6 PM)
+          # =====================================================
+
+          START_HOUR=9
+          END_HOUR=18
+
+          # =====================================================
+          # GRAPH PATTERN SUPPORT
+          # =====================================================
+
+          # Optional pattern map
+          # Can customize by weekday/month/etc
+
+          # =====================================================
+          # CREATE COMMITS
+          # =====================================================
 
           for i in $(seq 1 $COMMITS); do
-            echo "Commit #$i of $COMMITS - $(date '+%Y-%m-%d %H:%M:%S UTC')" >> log.txt
-            git add log.txt
-            git commit -m "Auto commit #$i/$COMMITS - $TODAY" || echo "Commit skipped"
-            echo "✓ Commit $i/$COMMITS"
+
+            RANDOM_HOUR=$(( RANDOM % (END_HOUR - START_HOUR) + START_HOUR ))
+            RANDOM_MIN=$(( RANDOM % 60 ))
+            RANDOM_SEC=$(( RANDOM % 60 ))
+
+            RANDOM_TIME=$(printf "%02d:%02d:%02d" $RANDOM_HOUR $RANDOM_MIN $RANDOM_SEC)
+
+            COMMIT_DATE="$TODAY $RANDOM_TIME"
+
+            export GIT_AUTHOR_DATE="$COMMIT_DATE"
+            export GIT_COMMITTER_DATE="$COMMIT_DATE"
+
+            echo "Streak:$STREAK Commit:$i Time:$COMMIT_DATE" >> contribution_log.txt
+
+            git add contribution_log.txt
+
+            git commit -m "feat: activity update $i/$COMMITS" || true
+
+            echo "Created commit $i/$COMMITS at $COMMIT_DATE"
+
+            sleep $(( RANDOM % 5 + 1 ))
+
           done
 
+          # =====================================================
+          # UPDATE STREAK TRACKERS
+          # =====================================================
+
+          NEXT_STREAK=$(( STREAK + 1 ))
+
+          if [ "$NEXT_STREAK" -gt 365 ]; then
+            NEXT_STREAK=365
+          fi
+
+          echo "$NEXT_STREAK" > "$STREAK_FILE"
+          echo "$TODAY" > "$LAST_RUN_FILE"
+
+          git add "$STREAK_FILE" "$LAST_RUN_FILE"
+
+          export GIT_AUTHOR_DATE="$TODAY 17:30:00"
+          export GIT_COMMITTER_DATE="$TODAY 17:30:00"
+
+          git commit -m "chore: maintain streak $NEXT_STREAK days" || true
+
           git push origin ${{ github.ref }}
 
-          # Record that we ran today
-          echo "$TODAY" > $LAST_RUN_FILE
-          git add $LAST_RUN_FILE
-          git commit -m "Updated last_run tracker - $TODAY" || true
-          git push origin ${{ github.ref }}
-
-          echo "🎉 Completed $COMMITS commits at random time today!"
+          echo "Contribution engine completed."
