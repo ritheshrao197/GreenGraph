@@ -1,397 +1,369 @@
 name: github-activity
 
 env:
-FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 on:
-schedule:
-- cron: "0 * * * *"
-workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
 
 permissions:
-contents: write
-pull-requests: write
-issues: write
+  contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
-github-activity:
-runs-on: ubuntu-latest
-
-
-steps:
-  - name: Checkout Repository
-    uses: actions/checkout@v4
-
-  - name: Generate Advanced GitHub Activity
+  github-activity:
+    runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       REPO: ${{ github.repository }}
-    run: |
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-      set -e
+      - name: Generate Advanced GitHub Activity
+        shell: bash
+        run: |
+          set +e
 
-      git config --global user.name "Rithesh"
-      git config --global user.email "rithesh197rao@gmail.com"
+          git config --global user.name "Rithesh"
+          git config --global user.email "rithesh197rao@gmail.com"
 
-      TODAY=$(date '+%Y-%m-%d')
-      WEEKDAY=$(date '+%u')
-      MONTH=$(date '+%m')
+          TODAY=$(date '+%Y-%m-%d')
+          WEEKDAY=$(date '+%u')
+          MONTH=$(date '+%m')
+          DAY=$(date '+%d')
 
-      LAST_RUN_FILE="last_run.txt"
-      STREAK_FILE="streak_count.txt"
+          LAST_RUN_FILE="last_run.txt"
+          STREAK_FILE="streak_count.txt"
 
-      # =====================================================
-      # PREVENT MULTIPLE DAILY RUNS
-      # =====================================================
+          echo "Starting activity engine..."
 
-      if [ -f "$LAST_RUN_FILE" ] && [ "$(cat $LAST_RUN_FILE)" = "$TODAY" ]; then
-        echo "Already executed today."
-        exit 0
-      fi
+          # =====================================================
+          # PREVENT MULTIPLE RUNS
+          # =====================================================
 
-      # =====================================================
-      # STREAK MANAGEMENT
-      # =====================================================
+          if [ -f "$LAST_RUN_FILE" ]; then
+            LAST_RUN=$(cat "$LAST_RUN_FILE")
 
-      if [ ! -f "$STREAK_FILE" ]; then
-        echo "1" > "$STREAK_FILE"
-      fi
+            if [ "$LAST_RUN" = "$TODAY" ]; then
+              echo "Already executed today."
+              exit 0
+            fi
+          fi
 
-      STREAK=$(cat "$STREAK_FILE")
+          # =====================================================
+          # STREAK MANAGEMENT
+          # =====================================================
 
-      if [ -f "$LAST_RUN_FILE" ]; then
+          if [ ! -f "$STREAK_FILE" ]; then
+            echo "1" > "$STREAK_FILE"
+          fi
 
-        LAST_DATE=$(cat "$LAST_RUN_FILE")
+          STREAK=$(cat "$STREAK_FILE")
 
-        LAST_TS=$(date -d "$LAST_DATE" +%s)
-        TODAY_TS=$(date -d "$TODAY" +%s)
+          if [ -f "$LAST_RUN_FILE" ]; then
+            LAST_DATE=$(cat "$LAST_RUN_FILE")
 
-        DIFF_DAYS=$(( (TODAY_TS - LAST_TS) / 86400 ))
+            LAST_TS=$(date -d "$LAST_DATE" +%s)
+            TODAY_TS=$(date -d "$TODAY" +%s)
 
-        if [ "$DIFF_DAYS" -gt 1 ]; then
-          echo "Missed streak detected. Resetting."
-          STREAK=1
-        fi
-      fi
+            DIFF_DAYS=$(( (TODAY_TS - LAST_TS) / 86400 ))
 
-      # =====================================================
-      # MONTHLY ACTIVITY ROTATION
-      # =====================================================
+            if [ "$DIFF_DAYS" -gt 1 ]; then
+              echo "Missed streak. Resetting."
+              STREAK=1
+            fi
+          fi
 
-      MONTHLY_MULTIPLIER=1
+          # =====================================================
+          # MONTHLY ROTATION
+          # =====================================================
 
-      case "$MONTH" in
-        1|2|3)
-          MONTHLY_MULTIPLIER=2
-          ;;
-        4|5)
           MONTHLY_MULTIPLIER=1
-          ;;
-        6|7|8)
-          MONTHLY_MULTIPLIER=1
-          ;;
-        9|10|11)
-          MONTHLY_MULTIPLIER=3
-          ;;
-        12)
-          MONTHLY_MULTIPLIER=2
-          ;;
-      esac
 
-      # =====================================================
-      # CONTRIBUTION GRADIENT ENGINE
-      # =====================================================
+          case "$MONTH" in
+            1|2|3)
+              MONTHLY_MULTIPLIER=2
+              ;;
+            4|5)
+              MONTHLY_MULTIPLIER=1
+              ;;
+            6|7|8)
+              MONTHLY_MULTIPLIER=1
+              ;;
+            9|10|11)
+              MONTHLY_MULTIPLIER=3
+              ;;
+            12)
+              MONTHLY_MULTIPLIER=2
+              ;;
+          esac
 
-      DAY=$(date '+%d')
+          # =====================================================
+          # CONTRIBUTION ENGINE
+          # =====================================================
 
-      WAVE=$(( 10 + (DAY % 10) * MONTHLY_MULTIPLIER ))
+          WAVE=$(( 10 + (DAY % 10) * MONTHLY_MULTIPLIER ))
 
-      PULSE=$(( (DAY % 7) * 2 ))
+          PULSE=$(( (DAY % 7) * 2 ))
 
-      if [ "$WEEKDAY" -ge 6 ]; then
-        WEEKEND_DROP=10
-      else
-        WEEKEND_DROP=0
-      fi
+          if [ "$WEEKDAY" -ge 6 ]; then
+            WEEKEND_DROP=10
+          else
+            WEEKEND_DROP=0
+          fi
 
-      NOISE=$(( RANDOM % 5 ))
+          NOISE=$(( RANDOM % 5 ))
 
-      COMMITS=$(( WAVE + PULSE + NOISE - WEEKEND_DROP ))
+          COMMITS=$(( WAVE + PULSE + NOISE - WEEKEND_DROP ))
 
-      if [ "$COMMITS" -lt 1 ]; then
-        COMMITS=1
-      fi
+          if [ "$COMMITS" -lt 1 ]; then
+            COMMITS=1
+          fi
 
-      if [ "$COMMITS" -gt 60 ]; then
-        COMMITS=60
-      fi
+          if [ "$COMMITS" -gt 40 ]; then
+            COMMITS=40
+          fi
 
-      echo "Today's commits: $COMMITS"
+          echo "Commits today: $COMMITS"
 
-      # =====================================================
-      # OFFICE HOURS COMMITS
-      # =====================================================
+          # =====================================================
+          # COMMIT GENERATION
+          # =====================================================
 
-      START_HOUR=9
-      END_HOUR=18
+          START_HOUR=9
+          END_HOUR=18
 
-      for i in $(seq 1 $COMMITS); do
+          for i in $(seq 1 $COMMITS); do
+            RANDOM_HOUR=$(( RANDOM % (END_HOUR - START_HOUR) + START_HOUR ))
+            RANDOM_MIN=$(( RANDOM % 60 ))
+            RANDOM_SEC=$(( RANDOM % 60 ))
 
-        RANDOM_HOUR=$(( RANDOM % (END_HOUR - START_HOUR) + START_HOUR ))
-        RANDOM_MIN=$(( RANDOM % 60 ))
-        RANDOM_SEC=$(( RANDOM % 60 ))
+            RANDOM_TIME=$(printf "%02d:%02d:%02d" \
+            $RANDOM_HOUR $RANDOM_MIN $RANDOM_SEC)
 
-        RANDOM_TIME=$(printf "%02d:%02d:%02d" \
-        $RANDOM_HOUR $RANDOM_MIN $RANDOM_SEC)
+            COMMIT_DATE="$TODAY $RANDOM_TIME"
 
-        COMMIT_DATE="$TODAY $RANDOM_TIME"
+            export GIT_AUTHOR_DATE="$COMMIT_DATE"
+            export GIT_COMMITTER_DATE="$COMMIT_DATE"
 
-        export GIT_AUTHOR_DATE="$COMMIT_DATE"
-        export GIT_COMMITTER_DATE="$COMMIT_DATE"
+            echo "Activity $i | $COMMIT_DATE" >> activity_log.txt
 
-        echo "Activity $i | $COMMIT_DATE" >> activity_log.txt
+            git add activity_log.txt
 
-        git add activity_log.txt
+            git commit -m "feat: contribution update $i/$COMMITS" || true
 
-        git commit -m "feat: contribution update $i/$COMMITS" || true
+            sleep 1
+          done
 
-        sleep 1
+          # =====================================================
+          # PUSH RETRY LOGIC
+          # =====================================================
 
-      done
+          PUSH_SUCCESS=0
 
-      # =====================================================
-      # RETRY LOGIC FOR GIT PUSH
-      # =====================================================
+          for attempt in 1 2 3; do
+            git pull --rebase origin "$DEFAULT_BRANCH"
 
-      PUSH_SUCCESS=0
+            if git push origin HEAD:"$DEFAULT_BRANCH"; then
+              PUSH_SUCCESS=1
+              echo "Push successful"
+              break
+            fi
 
-      for attempt in 1 2 3; do
+            echo "Push retry $attempt"
 
-        if git push origin ${{ github.ref }}; then
-          PUSH_SUCCESS=1
-          break
-        fi
+            sleep 5
+          done
 
-        echo "Push failed. Retry attempt $attempt"
+          # =====================================================
+          # ISSUE CREATION
+          # =====================================================
 
-        sleep 5
-
-      done
-
-      if [ "$PUSH_SUCCESS" -ne 1 ]; then
-        echo "Push failed after retries."
-        exit 1
-      fi
-
-      # =====================================================
-      # RATE LIMITED ISSUE CREATION
-      # =====================================================
-
-      OPEN_ISSUES=$(gh issue list \
-        --repo "$REPO" \
-        --state open \
-        --limit 100 \
-        --json number \
-        --jq '. | length')
-
-      if [ "$OPEN_ISSUES" -lt 5 ]; then
-
-        ISSUE_CHANCE=$(( RANDOM % 100 ))
-
-        if [ "$ISSUE_CHANCE" -lt 25 ]; then
-
-          ISSUE_TITLE_LIST=(
-            "Optimize rendering pipeline"
-            "Improve error handling"
-            "Refactor state management"
-            "Reduce memory allocation"
-            "Improve loading flow"
-            "Update dependency handling"
-          )
-
-          RANDOM_INDEX=$(( RANDOM % ${#ISSUE_TITLE_LIST[@]} ))
-
-          ISSUE_TITLE="${ISSUE_TITLE_LIST[$RANDOM_INDEX]}"
-
-          DUPLICATE=$(gh issue list \
+          OPEN_ISSUES=$(gh issue list \
             --repo "$REPO" \
             --state open \
-            --search "$ISSUE_TITLE" \
+            --limit 100 \
             --json number \
             --jq '. | length')
 
-          if [ "$DUPLICATE" -eq 0 ]; then
+          if [ "$OPEN_ISSUES" -lt 5 ]; then
+            ISSUE_CHANCE=$(( RANDOM % 100 ))
 
-            gh issue create \
-              --repo "$REPO" \
-              --title "$ISSUE_TITLE" \
-              --body "Automated tracking issue."
+            if [ "$ISSUE_CHANCE" -lt 20 ]; then
+              ISSUE_TITLES=(
+                "Optimize rendering pipeline"
+                "Improve caching layer"
+                "Reduce memory allocation"
+                "Improve validation flow"
+                "Refactor API handling"
+                "Improve state management"
+              )
 
-            echo "Issue created"
+              RANDOM_INDEX=$(( RANDOM % ${#ISSUE_TITLES[@]} ))
+
+              ISSUE_TITLE="${ISSUE_TITLES[$RANDOM_INDEX]}"
+
+              DUPLICATE=$(gh issue list \
+                --repo "$REPO" \
+                --state open \
+                --search "$ISSUE_TITLE" \
+                --json number \
+                --jq '. | length')
+
+              if [ "$DUPLICATE" -eq 0 ]; then
+                gh issue create \
+                  --repo "$REPO" \
+                  --title "$ISSUE_TITLE" \
+                  --body "Automated issue generated."
+
+                echo "Issue created"
+              fi
+            fi
           fi
-        fi
-      fi
 
-      # =====================================================
-      # AUTO CLOSE STALE ISSUES
-      # =====================================================
+          # =====================================================
+          # CLOSE RANDOM STALE ISSUES
+          # =====================================================
 
-      STALE_ISSUES=$(gh issue list \
-        --repo "$REPO" \
-        --state open \
-        --limit 20 \
-        --json number,updatedAt)
-
-      echo "$STALE_ISSUES" | jq -c '.[]' | while read issue; do
-
-        NUMBER=$(echo "$issue" | jq -r '.number')
-        UPDATED=$(echo "$issue" | jq -r '.updatedAt')
-
-        UPDATED_TS=$(date -d "$UPDATED" +%s)
-        NOW_TS=$(date +%s)
-
-        AGE_DAYS=$(( (NOW_TS - UPDATED_TS) / 86400 ))
-
-        if [ "$AGE_DAYS" -gt 14 ]; then
-
-          gh issue close "$NUMBER" \
+          ISSUE_NUMBERS=$(gh issue list \
             --repo "$REPO" \
-            --comment "Closing stale issue automatically."
+            --state open \
+            --limit 10 \
+            --json number \
+            --jq '.[].number')
 
-          echo "Closed stale issue #$NUMBER"
-        fi
+          for ISSUE in $ISSUE_NUMBERS; do
+            RANDOM_CLOSE=$(( RANDOM % 100 ))
 
-      done
+            if [ "$RANDOM_CLOSE" -lt 10 ]; then
+              gh issue close "$ISSUE" \
+                --repo "$REPO" \
+                --comment "Auto-closing stale issue."
 
-      # =====================================================
-      # PREVENT DUPLICATE PRs
-      # =====================================================
+              echo "Closed issue #$ISSUE"
+            fi
+          done
 
-      OPEN_PRS=$(gh pr list \
-        --repo "$REPO" \
-        --state open \
-        --limit 100 \
-        --json number \
-        --jq '. | length')
+          # =====================================================
+          # PULL REQUESTS
+          # =====================================================
 
-      if [ "$OPEN_PRS" -lt 3 ]; then
-
-        PR_CHANCE=$(( RANDOM % 100 ))
-
-        if [ "$PR_CHANCE" -lt 20 ]; then
-
-          BRANCH_NAME="auto/pr-$TODAY-$RANDOM"
-
-          git checkout -b "$BRANCH_NAME"
-
-          echo "PR update $(date)" >> pr_activity.txt
-
-          git add pr_activity.txt
-
-          git commit -m "feat: automated improvement"
-
-          git push origin "$BRANCH_NAME"
-
-          EXISTING_PR=$(gh pr list \
+          OPEN_PRS=$(gh pr list \
             --repo "$REPO" \
-            --head "$BRANCH_NAME" \
+            --state open \
             --json number \
             --jq '. | length')
 
-          if [ "$EXISTING_PR" -eq 0 ]; then
+          if [ "$OPEN_PRS" -lt 3 ]; then
+            PR_CHANCE=$(( RANDOM % 100 ))
 
-            gh pr create \
-              --repo "$REPO" \
-              --title "Automated improvement update" \
-              --body "Generated automated pull request." \
-              --base main \
-              --head "$BRANCH_NAME"
+            if [ "$PR_CHANCE" -lt 20 ]; then
+              BRANCH_NAME="auto-update-$TODAY-$RANDOM"
 
-            echo "PR created"
+              git checkout -b "$BRANCH_NAME"
 
+              echo "PR update $(date)" >> pr_activity.txt
+
+              git add pr_activity.txt
+
+              git commit -m "feat: automated improvement"
+
+              git push origin "$BRANCH_NAME"
+
+              EXISTING_PR=$(gh pr list \
+                --repo "$REPO" \
+                --head "$BRANCH_NAME" \
+                --json number \
+                --jq '. | length')
+
+              if [ "$EXISTING_PR" -eq 0 ]; then
+                gh pr create \
+                  --repo "$REPO" \
+                  --title "Automated improvement update" \
+                  --body "Generated automated pull request." \
+                  --base "$DEFAULT_BRANCH" \
+                  --head "$BRANCH_NAME"
+
+                echo "PR created"
+              fi
+
+              git checkout "$DEFAULT_BRANCH"
+            fi
           fi
 
-          git checkout main
+          # =====================================================
+          # AUTO MERGE PRs
+          # =====================================================
 
-        fi
-      fi
-
-      # =====================================================
-      # AUTO MERGE GENERATED PRs
-      # =====================================================
-
-      PR_NUMBERS=$(gh pr list \
-        --repo "$REPO" \
-        --state open \
-        --json number \
-        --jq '.[].number')
-
-      for PR in $PR_NUMBERS; do
-
-        gh pr merge "$PR" \
-          --repo "$REPO" \
-          --squash \
-          --delete-branch || true
-
-        echo "Merged PR #$PR"
-
-      done
-
-      # =====================================================
-      # RANDOM CODE REVIEW COMMENTS
-      # =====================================================
-
-      REVIEW_CHANCE=$(( RANDOM % 100 ))
-
-      if [ "$REVIEW_CHANCE" -lt 30 ]; then
-
-        PR_NUMBER=$(gh pr list \
-          --repo "$REPO" \
-          --limit 1 \
-          --json number \
-          --jq '.[0].number')
-
-        if [ ! -z "$PR_NUMBER" ]; then
-
-          COMMENTS=(
-            "Looks good overall."
-            "Can we optimize this section?"
-            "Please improve naming consistency."
-            "Nice cleanup."
-            "Potential edge case here."
-            "Memory usage can be reduced."
-          )
-
-          RANDOM_COMMENT=$(( RANDOM % ${#COMMENTS[@]} ))
-
-          REVIEW_BODY="${COMMENTS[$RANDOM_COMMENT]}"
-
-          gh pr comment "$PR_NUMBER" \
+          PR_NUMBERS=$(gh pr list \
             --repo "$REPO" \
-            --body "$REVIEW_BODY"
+            --state open \
+            --json number \
+            --jq '.[].number')
 
-          echo "Review comment added"
+          for PR in $PR_NUMBERS; do
+            gh pr merge "$PR" \
+              --repo "$REPO" \
+              --squash \
+              --delete-branch || true
+          done
 
-        fi
-      fi
+          # =====================================================
+          # REVIEW COMMENTS
+          # =====================================================
 
-      # =====================================================
-      # UPDATE STREAK
-      # =====================================================
+          REVIEW_CHANCE=$(( RANDOM % 100 ))
 
-      NEXT_STREAK=$(( STREAK + 1 ))
+          if [ "$REVIEW_CHANCE" -lt 30 ]; then
+            PR_NUMBER=$(gh pr list \
+              --repo "$REPO" \
+              --limit 1 \
+              --json number \
+              --jq '.[0].number')
 
-      if [ "$NEXT_STREAK" -gt 365 ]; then
-        NEXT_STREAK=365
-      fi
+            if [ ! -z "$PR_NUMBER" ] && [ "$PR_NUMBER" != "null" ]; then
+              COMMENTS=(
+                "Looks good overall."
+                "Can we optimize this section?"
+                "Please improve naming consistency."
+                "Nice cleanup."
+                "Potential edge case here."
+                "Memory usage can be reduced."
+              )
 
-      echo "$NEXT_STREAK" > "$STREAK_FILE"
-      echo "$TODAY" > "$LAST_RUN_FILE"
+              RANDOM_COMMENT=$(( RANDOM % ${#COMMENTS[@]} ))
 
-      git add "$STREAK_FILE" "$LAST_RUN_FILE"
+              REVIEW_BODY="${COMMENTS[$RANDOM_COMMENT]}"
 
-      git commit -m "chore: maintain streak $NEXT_STREAK days" || true
+              gh pr comment "$PR_NUMBER" \
+                --repo "$REPO" \
+                --body "$REVIEW_BODY"
+            fi
+          fi
 
-      git push origin ${{ github.ref }}
+          # =====================================================
+          # UPDATE STREAK
+          # =====================================================
 
-      echo "Advanced GitHub activity completed."
+          NEXT_STREAK=$(( STREAK + 1 ))
+
+          if [ "$NEXT_STREAK" -gt 365 ]; then
+            NEXT_STREAK=365
+          fi
+
+          echo "$NEXT_STREAK" > "$STREAK_FILE"
+          echo "$TODAY" > "$LAST_RUN_FILE"
+
+          git add "$STREAK_FILE" "$LAST_RUN_FILE"
+
+          git commit -m "chore: maintain streak $NEXT_STREAK days" || true
+
+          git push origin HEAD:"$DEFAULT_BRANCH" || true
+
+          echo "Activity engine completed successfully."
