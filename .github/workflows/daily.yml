@@ -17,7 +17,7 @@ jobs:
 github-activity:
 runs-on: ubuntu-latest
 
-```
+
 steps:
   - name: Checkout Repository
     uses: actions/checkout@v4
@@ -395,4 +395,3 @@ steps:
       git push origin ${{ github.ref }}
 
       echo "Advanced GitHub activity completed."
-```
