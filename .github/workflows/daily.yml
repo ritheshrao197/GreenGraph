@@ -1,4 +1,4 @@
-name: Advanced GitHub Contribution Engine
+name: Advanced GitHub Activity Engine
 
 on:
   schedule:
@@ -7,15 +7,20 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
-  contribution-engine:
+  github-activity:
     runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Generate Advanced Contribution Pattern
+      - name: Generate Full GitHub Activity
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
 
           git config --global user.name "Rithesh"
@@ -29,11 +34,11 @@ jobs:
           STREAK_FILE="streak_count.txt"
 
           # =====================================================
-          # PREVENT MULTIPLE DAILY RUNS
+          # PREVENT MULTIPLE RUNS
           # =====================================================
 
           if [ -f "$LAST_RUN_FILE" ] && [ "$(cat $LAST_RUN_FILE)" = "$TODAY" ]; then
-            echo "Already committed today."
+            echo "Already executed today."
             exit 0
           fi
 
@@ -47,12 +52,6 @@ jobs:
 
           STREAK=$(cat "$STREAK_FILE")
 
-          echo "Current streak: $STREAK"
-
-          # =====================================================
-          # AUTO RESET MISSED STREAKS
-          # =====================================================
-
           if [ -f "$LAST_RUN_FILE" ]; then
 
             LAST_DATE=$(cat "$LAST_RUN_FILE")
@@ -63,102 +62,46 @@ jobs:
             DIFF_DAYS=$(( (TODAY_TS - LAST_TS) / 86400 ))
 
             if [ "$DIFF_DAYS" -gt 1 ]; then
-              echo "Missed streak detected. Resetting."
               STREAK=1
             fi
           fi
 
           # =====================================================
-          # MAINTAIN EXACT 365 DAY STREAK
+          # ANIMATED CONTRIBUTION GRADIENT
           # =====================================================
 
-          if [ "$STREAK" -gt 365 ]; then
-            STREAK=365
-          fi
+          DAY=$(date '+%d')
 
-          # =====================================================
-          # SEASONAL ACTIVITY PATTERNS
-          # =====================================================
+          WAVE=$(( 15 + 12 * DAY / 30 ))
 
-          SEASONAL_BOOST=0
+          PULSE=$(( (DAY % 10) * 3 ))
 
-          # Higher activity during Jan-Apr and Sep-Nov
-          if [ "$MONTH" -ge 1 ] && [ "$MONTH" -le 4 ]; then
-            SEASONAL_BOOST=8
-          fi
-
-          if [ "$MONTH" -ge 9 ] && [ "$MONTH" -le 11 ]; then
-            SEASONAL_BOOST=10
-          fi
-
-          # Summer lower activity
-          if [ "$MONTH" -ge 5 ] && [ "$MONTH" -le 8 ]; then
-            SEASONAL_BOOST=3
-          fi
-
-          # December moderate
-          if [ "$MONTH" -eq 12 ]; then
-            SEASONAL_BOOST=5
-          fi
-
-          # =====================================================
-          # WEEKDAY vs WEEKEND PATTERNS
-          # =====================================================
-
-          if [ "$WEEKDAY" -le 5 ]; then
-            DAY_BOOST=$(( RANDOM % 8 + 5 ))
+          if [ "$WEEKDAY" -ge 6 ]; then
+            WEEKEND_DROP=10
           else
-            DAY_BOOST=$(( RANDOM % 3 + 1 ))
+            WEEKEND_DROP=0
           fi
 
-          # =====================================================
-          # CONTRIBUTION WAVE PATTERN
-          # =====================================================
+          NOISE=$(( RANDOM % 6 ))
 
-          DAY_OF_MONTH=$(date '+%d')
+          COMMITS=$(( WAVE + PULSE + NOISE - WEEKEND_DROP ))
 
-          WAVE=$(( (DAY_OF_MONTH % 7) * 2 ))
-
-          # =====================================================
-          # RANDOM BURSTS
-          # =====================================================
-
-          BURST=0
-
-          if [ $(( RANDOM % 12 )) -eq 0 ]; then
-            BURST=$(( RANDOM % 20 + 10 ))
-          fi
-
-          # =====================================================
-          # FINAL COMMIT COUNT
-          # =====================================================
-
-          COMMITS=$(( WAVE + DAY_BOOST + BURST + SEASONAL_BOOST ))
-
-          # Safety limits
           if [ "$COMMITS" -lt 1 ]; then
             COMMITS=1
           fi
 
-          if [ "$COMMITS" -gt 60 ]; then
-            COMMITS=60
+          if [ "$COMMITS" -gt 50 ]; then
+            COMMITS=50
           fi
 
           echo "Today's commits: $COMMITS"
 
           # =====================================================
-          # OFFICE HOURS ONLY (9 AM - 6 PM)
+          # OFFICE HOURS
           # =====================================================
 
           START_HOUR=9
           END_HOUR=18
-
-          # =====================================================
-          # GRAPH PATTERN SUPPORT
-          # =====================================================
-
-          # Optional pattern map
-          # Can customize by weekday/month/etc
 
           # =====================================================
           # CREATE COMMITS
@@ -170,27 +113,131 @@ jobs:
             RANDOM_MIN=$(( RANDOM % 60 ))
             RANDOM_SEC=$(( RANDOM % 60 ))
 
-            RANDOM_TIME=$(printf "%02d:%02d:%02d" $RANDOM_HOUR $RANDOM_MIN $RANDOM_SEC)
+            RANDOM_TIME=$(printf "%02d:%02d:%02d" \
+            $RANDOM_HOUR $RANDOM_MIN $RANDOM_SEC)
 
             COMMIT_DATE="$TODAY $RANDOM_TIME"
 
             export GIT_AUTHOR_DATE="$COMMIT_DATE"
             export GIT_COMMITTER_DATE="$COMMIT_DATE"
 
-            echo "Streak:$STREAK Commit:$i Time:$COMMIT_DATE" >> contribution_log.txt
+            echo "Activity $i | $COMMIT_DATE" >> activity_log.txt
 
-            git add contribution_log.txt
+            git add activity_log.txt
 
-            git commit -m "feat: activity update $i/$COMMITS" || true
+            git commit -m "feat: contribution update $i/$COMMITS" || true
 
-            echo "Created commit $i/$COMMITS at $COMMIT_DATE"
+            echo "Commit $i created"
 
-            sleep $(( RANDOM % 5 + 1 ))
+            sleep 1
 
           done
 
+          git push origin ${{ github.ref }}
+
           # =====================================================
-          # UPDATE STREAK TRACKERS
+          # CREATE RANDOM ISSUES
+          # =====================================================
+
+          ISSUE_CHANCE=$(( RANDOM % 100 ))
+
+          if [ "$ISSUE_CHANCE" -lt 35 ]; then
+
+            ISSUE_TITLE_LIST=(
+              "Optimize loading performance"
+              "Refactor UI manager"
+              "Fix edge-case handling"
+              "Improve error logging"
+              "Update API validation"
+              "Improve caching system"
+              "Cleanup old assets"
+              "Reduce memory allocation"
+            )
+
+            RANDOM_INDEX=$(( RANDOM % ${#ISSUE_TITLE_LIST[@]} ))
+
+            ISSUE_TITLE="${ISSUE_TITLE_LIST[$RANDOM_INDEX]}"
+
+            gh issue create \
+              --repo "$REPO" \
+              --title "$ISSUE_TITLE" \
+              --body "Automated tracking issue generated for ongoing improvements."
+
+            echo "Issue created"
+          fi
+
+          # =====================================================
+          # CREATE RANDOM PULL REQUESTS
+          # =====================================================
+
+          PR_CHANCE=$(( RANDOM % 100 ))
+
+          if [ "$PR_CHANCE" -lt 25 ]; then
+
+            BRANCH_NAME="auto/pr-$TODAY-$RANDOM"
+
+            git checkout -b "$BRANCH_NAME"
+
+            echo "PR update $(date)" >> pr_activity.txt
+
+            git add pr_activity.txt
+
+            git commit -m "feat: automated improvement update"
+
+            git push origin "$BRANCH_NAME"
+
+            gh pr create \
+              --repo "$REPO" \
+              --title "Automated improvement update" \
+              --body "Generated automated pull request for activity simulation." \
+              --base main \
+              --head "$BRANCH_NAME"
+
+            echo "Pull request created"
+
+            git checkout main
+          fi
+
+          # =====================================================
+          # ADD CODE REVIEW COMMENTS
+          # =====================================================
+
+          REVIEW_CHANCE=$(( RANDOM % 100 ))
+
+          if [ "$REVIEW_CHANCE" -lt 30 ]; then
+
+            PR_NUMBER=$(gh pr list \
+              --repo "$REPO" \
+              --limit 1 \
+              --json number \
+              --jq '.[0].number')
+
+            if [ ! -z "$PR_NUMBER" ]; then
+
+              REVIEW_COMMENTS=(
+                "Looks good overall."
+                "Consider optimizing this logic."
+                "Please improve naming consistency."
+                "Can we reduce memory usage here?"
+                "Edge cases should be handled."
+                "Nice implementation."
+                "This section may need refactoring."
+              )
+
+              RANDOM_REVIEW=$(( RANDOM % ${#REVIEW_COMMENTS[@]} ))
+
+              REVIEW_BODY="${REVIEW_COMMENTS[$RANDOM_REVIEW]}"
+
+              gh pr comment "$PR_NUMBER" \
+                --repo "$REPO" \
+                --body "$REVIEW_BODY"
+
+              echo "Review comment added"
+            fi
+          fi
+
+          # =====================================================
+          # UPDATE STREAK
           # =====================================================
 
           NEXT_STREAK=$(( STREAK + 1 ))
@@ -204,11 +251,8 @@ jobs:
 
           git add "$STREAK_FILE" "$LAST_RUN_FILE"
 
-          export GIT_AUTHOR_DATE="$TODAY 17:30:00"
-          export GIT_COMMITTER_DATE="$TODAY 17:30:00"
-
           git commit -m "chore: maintain streak $NEXT_STREAK days" || true
 
           git push origin ${{ github.ref }}
 
-          echo "Contribution engine completed."
+          echo "GitHub activity generation completed."
